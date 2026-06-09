@@ -56,8 +56,10 @@ class AgentController extends Controller
                 'hardware'  => "CPU: " . $request->input('cpu') . ", GPU: " . $request->input('gpu') . ", RAM: " . $request->input('ram'),
             ];
 
-            // Hit Person 2's exact endpoint path: /guide
-            $response = Http::timeout(30)->post($backendUrl . '/guide', $payload);
+            // Hit Person 2's exact endpoint path: /guide.
+            // The agent runs synchronously (Steam fetch + sentiment model + several
+            // Mistral calls), so allow plenty of time before giving up.
+            $response = Http::timeout(180)->post($backendUrl . '/guide', $payload);
             
             if ($response->successful()) {
                 // Since the backend is synchronous, store the final verdict in cache 
@@ -71,16 +73,17 @@ class AgentController extends Controller
                 ]);
             }
 
-            Log::warning("Backend API responded with error: " . $response->status() . ". Falling back to simulator.");
+            Log::warning("Backend API responded with error: " . $response->status() . ".");
         } catch (\Exception $e) {
-            Log::info("External backend API unreachable: " . $e->getMessage() . ". Falling back to local simulator.");
+            Log::info("External backend API unreachable: " . $e->getMessage());
         }
 
-        // Return success with simulator mode indicator
+        // Backend unreachable or errored. Do NOT fabricate a verdict — tell the
+        // user honestly. HTTP 200 so the form handler reads our JSON `status`
+        // and surfaces the message (it throws a generic error on non-2xx).
         return response()->json([
-            'status' => 'success',
-            'id' => $trackingId,
-            'mode' => 'simulator'
+            'status'  => 'error',
+            'message' => 'The AI analysis engine is offline. Make sure the backend is running (uvicorn on port 8000) and try again.',
         ]);
     }
 
@@ -151,78 +154,20 @@ class AgentController extends Controller
             ]);
         }
 
-        // Fallback Local Simulation logic
+        // No real verdict in cache. Because /guide runs synchronously during
+        // initiateCheck(), a successful run always caches the verdict before this
+        // page polls — so reaching here means the job is unknown/expired or the
+        // backend was offline. Be honest rather than fabricating a result.
         if (!$specs) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'Job specifications not found or expired.'
-            ], 404);
-        }
-
-        $startTime = Cache::get("job_start_{$id}", time());
-        $elapsed = time() - $startTime;
-
-        $cpu = $specs['cpu'];
-        $gpu = $specs['gpu'];
-        $ram = $specs['ram'];
-        $game = $specs['game'];
-
-        // Define progressive logs
-        $logs = [
-            "[System] Initiating deep hardware diagnostics pipeline for Job UUID: {$id}...",
-            "[Diagnose] System Specs identified: CPU='{$cpu}', GPU='{$gpu}', RAM='{$ram}'.",
-        ];
-
-        if ($elapsed >= 2) {
-            $logs[] = "[Crawler] Scraping system configurations and compatibility metrics for '{$game}'...";
-            $logs[] = "[Crawler] Found official minimum requirements: 8GB RAM, Quad-Core CPU, Entry-Level DirectX 12 GPU.";
-        }
-        if ($elapsed >= 4) {
-            $logs[] = "[Analyzer] Analyzing CPU architecture: comparing '{$cpu}' single-threaded efficiency against physics engine load for '{$game}'...";
-            $logs[] = "[Analyzer] CPU Benchmark analysis complete. Load distribution models look optimized.";
-        }
-        if ($elapsed >= 6) {
-            $logs[] = "[Analyzer] Analyzing GPU pipeline: mapping shader pipelines of '{$gpu}' against rendering budget for target resolution...";
-            $logs[] = "[Analyzer] VRAM check: processing overhead for '{$game}' textures... RAM buffering: {$ram} available.";
-        }
-        if ($elapsed >= 8) {
-            $logs[] = "[Agent] Orchestrating final metrics: checking bottlenecks, power supply headroom, and frame rate estimates...";
-            $logs[] = "[Agent] Running final decision matrix logic...";
-        }
-        if ($elapsed >= 10) {
-            $logs[] = "[Agent] Diagnostics complete. Verdict and recommendation summary finalized.";
-        }
-
-        // Determine status and verdict based on elapsed time and specs
-        if ($elapsed >= 10) {
-            $status = 'completed';
-            
-            // Basic heuristics to make the recommendation feel authentic
-            $isLowRam = stripos($ram, '8') !== false || stripos($ram, '4') !== false;
-            $isLowGpu = stripos($gpu, 'gtx 10') !== false || stripos($gpu, 'gtx 16') !== false || stripos($gpu, 'integrated') !== false || stripos($gpu, 'intel uhd') !== false || stripos($gpu, '580') !== false;
-            $isHighGame = stripos($game, 'cyberpunk') !== false || stripos($game, 'alan wake') !== false || stripos($game, 'gta 6') !== false || stripos($game, 'flight simulator') !== false;
-
-            if (($isLowRam || $isLowGpu) && $isHighGame) {
-                $verdict = 'WAIT';
-                $summary = "We recommend you WAIT before buying this hardware or game. While your CPU ({$cpu}) may be capable, the target game '{$game}' is extremely taxing. Pairing it with a legacy GPU ({$gpu}) and/or limited RAM ({$ram}) will trigger significant bottlenecks, resulting in frame rates below 30FPS at 1080p. We suggest upgrading your GPU and expanding RAM to at least 16GB first.";
-            } elseif ($isLowRam && !$isHighGame) {
-                $verdict = 'WAIT';
-                $summary = "We advise you to WAIT. Your CPU ({$cpu}) and GPU ({$gpu}) should handle '{$game}' decently, but {$ram} RAM is a major system bottleneck for modern gaming OS environments. Background processes combined with the game's asset loading will cause stuttering. Upgrading to 16GB RAM is strongly recommended.";
-            } else {
-                $verdict = 'BUY';
-                $summary = "Excellent news! You are clear to BUY. The combination of your {$cpu} processor, {$gpu} graphics card, and {$ram} RAM provides more than enough computing power and bandwidth to run '{$game}' smoothly at high-fidelity settings. You will enjoy a stable, stutter-free gaming experience with high framerates.";
-            }
-        } else {
-            $status = 'processing';
-            $verdict = null;
-            $summary = null;
+                'status'  => 'error',
+                'message' => 'Job not found or expired. Please run the check again.',
+            ]);
         }
 
         return response()->json([
-            'status' => $status,
-            'verdict' => $verdict,
-            'summary' => $summary,
-            'logs' => $logs
+            'status'  => 'error',
+            'message' => 'Verdict unavailable — the AI analysis engine may be offline. Please try again.',
         ]);
     }
 }

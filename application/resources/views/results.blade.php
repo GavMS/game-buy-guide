@@ -184,7 +184,7 @@
                             :class="verdict === 'BUY' ? 'text-emerald-300' : 'text-red-300'">
                             Recommendation Summary
                         </h3>
-                        <p class="text-slate-300 text-sm md:text-base font-light leading-relaxed" x-text="summary"></p>
+                        <p class="text-slate-300 text-sm md:text-base font-light leading-relaxed" style="white-space: pre-line;" x-text="summary"></p>
                     </div>
                 </div>
             </div>

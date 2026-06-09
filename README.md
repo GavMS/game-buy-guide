@@ -115,7 +115,7 @@ Leave this terminal open. The server runs at `http://localhost:8000`. To confirm
 Open a **second** terminal. Do the one-time setup first:
 
 ```
-cd frontend
+cd application
 composer install
 ```
 
@@ -139,7 +139,7 @@ php artisan migrate
 
 > If `migrate` complains that the database file is missing, create the empty SQLite file first — on Windows: `New-Item database\database.sqlite`, on Mac/Linux: `touch database/database.sqlite` — then run `php artisan migrate` again.
 
-Open `frontend/.env` and make sure this line points at the backend, **with no `/api` on the end**:
+Open `application/.env` and make sure this line points at the backend, **with no `/api` on the end**:
 
 ```
 BACKEND_API_URL=http://localhost:8000
@@ -195,7 +195,7 @@ game-buy-guide/
 │   ├── server.py                 ← the web server Person 3's frontend talks to
 │   ├── requirements.txt          ← list of packages to install
 │   └── .env.example              ← template showing what your .env file should look like
-└── frontend/                     ← Person 3's Laravel web UI (run with: php artisan serve --port=8080)
+└── application/                  ← Person 3's Laravel web UI (run with: php artisan serve --port=8080)
     ├── app/Http/Controllers/AgentController.php  ← talks to the backend, shows the verdict
     ├── resources/views/          ← the pages (index = form, results = verdict dashboard)
     └── .env.example              ← set BACKEND_API_URL here (must point at the backend)
@@ -210,9 +210,9 @@ game-buy-guide/
 | `ModuleNotFoundError` | You forgot to run `pip install -r agent_backend/requirements.txt` |
 | `AuthenticationError` or `401` | Your `MISTRAL_API_KEY` in `.env` is wrong or missing |
 | `No Steam game found` | The game name didn't match anything — try the exact name from the Steam store page |
-| Port 8000 already in use | Change `--port 8000` to `--port 8001` in the uvicorn command (and update `BACKEND_API_URL` in `frontend/.env` to match) |
+| Port 8000 already in use | Change `--port 8000` to `--port 8001` in the uvicorn command (and update `BACKEND_API_URL` in `application/.env` to match) |
 | `uvicorn: command not found` | Use `python -m uvicorn` instead of just `uvicorn` |
-| Frontend results look generic / appear instantly | The frontend couldn't reach the backend and used its demo simulator. Make sure the backend (Part 1) is running and `BACKEND_API_URL` in `frontend/.env` is `http://localhost:8000` with **no** `/api` suffix |
+| Frontend results look generic / appear instantly | The frontend couldn't reach the backend and used its demo simulator. Make sure the backend (Part 1) is running and `BACKEND_API_URL` in `application/.env` is `http://localhost:8000` with **no** `/api` suffix |
 | `composer: command not found` | Composer isn't installed — get it from [getcomposer.org](https://getcomposer.org/download/) |
 | `php artisan serve` fails: port 8080 in use | Pick another port, e.g. `php artisan serve --port=8081`, and open that port in your browser |
-| Frontend page is blank or errors on load | You probably skipped `php artisan key:generate` or `php artisan migrate` — run both inside the `frontend` folder |
+| Frontend page is blank or errors on load | You probably skipped `php artisan key:generate` or `php artisan migrate` — run both inside the `application` folder |

@@ -46,9 +46,13 @@ def _sentiment_scores(text: str):
 
 
 def _clean(text: str) -> str:
-    """Remove control characters and trim review text to 300 chars.
-    Control characters (invisible special chars) break JSON parsing."""
-    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+    """Replace ALL control characters (incl. tabs/newlines/CR) with a space and
+    trim review text to 300 chars. Control characters survive in review text and
+    corrupt the JSON when the LLM relays it between tools, causing 'Invalid
+    control character' errors — so we strip them entirely, then collapse the
+    leftover whitespace."""
+    text = re.sub(r'[\x00-\x1f\x7f]', ' ', text)
+    text = re.sub(r'\s+', ' ', text)
     return text[:300].strip()
 
 
@@ -106,8 +110,11 @@ def classify_reviews(reviews_json: str) -> str:
     Input: JSON string from get_steam_reviews.
     Output: JSON with counts and top 8 genuine review details.
     """
-    # Parse the JSON string back into a Python dict
-    data = json.loads(reviews_json)
+    # Parse the JSON string back into a Python dict.
+    # strict=False tolerates raw control characters (newlines/tabs) that can
+    # survive in Steam review text when the LLM relays this JSON between tools —
+    # otherwise json.loads raises "Invalid control character" and the run 500s.
+    data = json.loads(reviews_json, strict=False)
 
     if "error" in data:
         return reviews_json  # pass the error straight through
