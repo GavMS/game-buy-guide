@@ -1,2 +1,12 @@
 .env
 agent_backend/.env
+
+# Sentiment model weights (~670 MB) — placed/downloaded manually, see README
+ml_models/sentiment_model/model.safetensors
+
+# Python bytecode cache
+__pycache__/
+*.pyc
+
+# Claude Code local runtime files
+.claude/

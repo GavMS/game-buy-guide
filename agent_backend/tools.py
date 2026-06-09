@@ -4,16 +4,45 @@ import os
 import re
 import requests
 import joblib
+from transformers import pipeline
 
 # Build the path to the ml_models folder (one level up from this file)
 _MODEL_DIR = os.path.join(os.path.dirname(__file__), '..', 'ml_models')
 
-# Load both models once when the file is imported — not inside every function call
-# joblib.load reads a saved sklearn model from disk
-sentiment_model = joblib.load(os.path.join(_MODEL_DIR, 'sentiment_model.pkl'))
+# Load the models once when the file is imported — not inside every function call.
+# The meme detector is still the trained sklearn model (joblib).
 meme_model = joblib.load(os.path.join(_MODEL_DIR, 'meme_detector_model.pkl'))
 
+# Sentiment now uses a fine-tuned 5-star BERT model loaded via transformers.
+# The model lives in ml_models/sentiment_model/ as a directory (config + weights
+# + tokenizer); its labels are "1 star".."5 stars". device=-1 forces CPU.
+_SENTIMENT_DIR = os.path.join(_MODEL_DIR, 'sentiment_model')
+sentiment_analyzer = pipeline(
+    "sentiment-analysis",
+    model=_SENTIMENT_DIR,
+    tokenizer=_SENTIMENT_DIR,
+    device=-1,
+)
+
 from langchain_core.tools import tool  # @tool turns a normal function into an AI-usable tool
+
+
+def _sentiment_scores(text: str):
+    """Collapse the 5-star model's output into (positive_pct, negative_pct).
+
+    Adapted from NEW PYTHON CODE/RunSentimentTransformerModel.py: each star band
+    is weighted (1*->0, 2*->25, ... 5*->100) and combined into an expected value,
+    giving a 0-100 'how positive' score. negative is just the complement."""
+    raw = sentiment_analyzer(text, top_k=None)  # list of {label, score} for all 5 stars
+    star_probs = {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.0}
+    for result in raw:
+        star_num = int(result["label"].split()[0])  # "4 stars" -> 4
+        star_probs[star_num] = result["score"]
+
+    positive_pct = round(
+        (star_probs[1] * 0) + (star_probs[2] * 25) + (star_probs[3] * 50)
+        + (star_probs[4] * 75) + (star_probs[5] * 100), 1)
+    return positive_pct, round(100.0 - positive_pct, 1)
 
 
 def _clean(text: str) -> str:
@@ -97,23 +126,15 @@ def classify_reviews(reviews_json: str) -> str:
         # meme_model returns 1 if the review is a joke/meme, 0 if genuine
         is_meme = bool(meme_model.predict([text])[0])
 
-        # sentiment_model returns 1 for positive, -1 for negative
-        sentiment_label = int(sentiment_model.predict([text])[0])
+        # 5-star transformer -> positive/negative percentages
+        positive_pct, negative_pct = _sentiment_scores(text)
 
-        # predict_proba gives confidence scores for each class (e.g. [0.2, 0.8])
-        sentiment_proba = sentiment_model.predict_proba([text])[0]
+        # Collapse to the same binary signal the agent already expects:
+        # >=50% positive leaning counts as a positive review.
+        is_positive = positive_pct >= 50.0
 
-        # Find which index in the probability array corresponds to the positive class
-        classes = list(sentiment_model.classes_)
-        pos_idx = classes.index(1) if 1 in classes else -1
-        confidence = float(sentiment_proba[pos_idx]) if pos_idx >= 0 else 0.5
-
-        if sentiment_label == -1:
-            # For negative reviews, show the confidence of the negative class instead
-            neg_idx = classes.index(-1) if -1 in classes else -1
-            confidence = float(sentiment_proba[neg_idx]) if neg_idx >= 0 else 0.5
-
-        is_positive = sentiment_label == 1
+        # confidence = the winning side's strength, as a 0-1 fraction
+        confidence = (positive_pct if is_positive else negative_pct) / 100.0
 
         if not is_meme:
             genuine_count += 1

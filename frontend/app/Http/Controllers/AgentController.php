@@ -122,6 +122,35 @@ class AgentController extends Controller
             // Unreachable external API, proceed to simulation mode
         }
 
+        // If the synchronous /guide call already produced a real verdict, use it.
+        // The presence of this cache key means initiateCheck() reached the backend
+        // successfully, so we surface the genuine AI answer instead of the simulator.
+        $verdictText = Cache::get("job_verdict_{$id}");
+        if ($verdictText) {
+            $upper   = strtoupper($verdictText);
+            $buyPos  = strpos($upper, 'BUY');
+            $waitPos = strpos($upper, 'WAIT');
+
+            // Pick whichever keyword appears first; default to WAIT if neither is
+            // found (safer to advise caution than to show a false BUY).
+            if ($buyPos !== false && ($waitPos === false || $buyPos < $waitPos)) {
+                $verdict = 'BUY';
+            } else {
+                $verdict = 'WAIT';
+            }
+
+            return response()->json([
+                'status'  => 'completed',
+                'verdict' => $verdict,
+                'summary' => $verdictText,
+                'logs'    => [
+                    "[System] Diagnostics job {$id} initialised.",
+                    "[Agent] AI backend contacted - analysing Steam reviews & patch notes...",
+                    "[Agent] Verdict received from Game Buy Guide agent.",
+                ],
+            ]);
+        }
+
         // Fallback Local Simulation logic
         if (!$specs) {
             return response()->json([
