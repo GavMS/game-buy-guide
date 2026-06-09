@@ -59,9 +59,9 @@ ml_models/sentiment_model/
 └── tokenizer_config.json
 ```
 
-If `model.safetensors` is missing, copy it in from wherever the team shares it
-(e.g. the original `NEW SENTIMENT MODEL/` folder). The backend loads this model
-at startup, so it must be present before you run the server.
+If `model.safetensors` is missing, copy it in from wherever the team shares the
+model weights. The backend loads this model at startup, so it must be present
+before you run the server.
 
 ### Step 3 — Add your Mistral API key
 
