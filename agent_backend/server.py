@@ -42,12 +42,31 @@ class GuideRequest(BaseModel):
 
 
 def _parse_verdict(text: str) -> str:
-    """Pull BUY/WAIT out of the agent's answer (first keyword wins, WAIT default)."""
+    """Pull BUY/WAIT/AVOID out of the agent's answer.
+
+    The verdict is the first word on the first non-empty line per the prompt
+    contract; fall back to earliest-keyword scanning if that line is malformed.
+    AVOID/WAIT are checked before BUY so phrases like "don't buy" or "avoid
+    buying" can never be misread as a BUY."""
+    for line in text.strip().splitlines():
+        word = line.strip().upper().strip('*# .:!')
+        if word in ("BUY", "WAIT", "AVOID"):
+            return word
+        if word:
+            break  # first non-empty line wasn't a bare verdict — fall back
+
     upper = text.upper()
-    buy, wait = upper.find("BUY"), upper.find("WAIT")
-    if buy != -1 and (wait == -1 or buy < wait):
-        return "BUY"
-    return "WAIT"
+    positions = {v: upper.find(v) for v in ("AVOID", "WAIT", "BUY")}
+    # Negated BUY ("DON'T BUY", "DO NOT BUY", "AVOID BUYING") must not count
+    buy_pos = positions["BUY"]
+    if buy_pos != -1:
+        preceding = upper[max(0, buy_pos - 12):buy_pos]
+        if "DON'T" in preceding or "NOT" in preceding or "AVOID" in preceding:
+            positions["BUY"] = -1
+    found = {v: p for v, p in positions.items() if p != -1}
+    if not found:
+        return "WAIT"  # safer default than a false BUY
+    return min(found, key=found.get)
 
 
 def _run_job(job_id: str, req: GuideRequest):

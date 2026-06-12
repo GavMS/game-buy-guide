@@ -155,7 +155,11 @@
                 <div class="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8">
                     <!-- Verdict Badge -->
                     <div class="flex-shrink-0 border px-8 py-6 text-center"
-                         :class="verdict === 'BUY' ? 'border-white bg-white text-[#1f2228]' : 'border-[rgba(255,255,255,0.2)] text-white'">
+                         :class="{
+                             'border-white bg-white text-[#1f2228]': verdict === 'BUY',
+                             'border-[rgba(255,255,255,0.2)] text-white': verdict === 'WAIT',
+                             'border-[rgba(255,255,255,0.2)] border-dashed text-white/40': verdict === 'AVOID'
+                         }">
                         <span class="font-mono text-[10px] uppercase tracking-[1.4px] block mb-1 opacity-50">Verdict</span>
                         <span class="font-mono font-light text-4xl md:text-5xl tracking-tight" x-text="verdict"></span>
                     </div>

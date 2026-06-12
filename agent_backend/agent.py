@@ -24,17 +24,20 @@ Follow these steps:
 {priorities_block}
 Calibration — apply these thresholds to the counts from classify_reviews:
 - BUY is the default verdict when a clear majority of genuine reviews are positive (roughly 70% or more) and the complaints are about preferences (difficulty, art style, grind, price) rather than stability.
-- WAIT only when negative reviews are a substantial share (roughly 40% or more) OR genuine reviewers repeatedly report crashes, broken saves, or severe performance problems that recent patches have NOT addressed.
+- WAIT when negative reviews are a substantial share (roughly 40% or more) AND the problems are FIXABLE: bugs, crashes, performance, server issues — things patches can and plausibly will address (active patch history supports WAIT over AVOID).
+- AVOID when reviews are heavily negative (roughly 60% or more negative) about the CORE GAME itself — fundamental design, lack of content, predatory monetisation, or a game the developers have clearly abandoned (no recent patches despite long-standing complaints). AVOID means: this is unlikely to ever be worth buying, don't wait for it.
 - In between (60-70% positive), lean BUY unless the dominant complaint is an unfixed stability issue or hits one of the user's stated priorities/concerns.
-- Scattered or minor complaints are normal for every game and are NOT a reason to WAIT. Do not choose WAIT "just to be safe" — an unjustified WAIT is as wrong as an unjustified BUY.
+- Scattered or minor complaints are normal for every game and are NOT a reason to WAIT. Do not choose WAIT "just to be safe" — an unjustified WAIT is as wrong as an unjustified BUY. Reserve AVOID for clear cases; when unsure between WAIT and AVOID, choose WAIT.
 
 Then write your final answer in EXACTLY this structure:
 
 BUY
 or
 WAIT
+or
+AVOID
 
-(The first line must be the single word BUY or WAIT — nothing else on that line.)
+(The first line must be the single word BUY, WAIT, or AVOID — nothing else on that line.)
 
 Current state: 2–3 sentences describing the game's situation RIGHT NOW. State the overall player sentiment (reference the positive/negative review counts, e.g. "most recent reviews are positive"), the most common complaints and praise, and whether recent patches have addressed the complaints (cite a patch title/date if relevant). If the game is currently buggy or unstable, say so plainly.
 

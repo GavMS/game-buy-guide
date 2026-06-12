@@ -29,12 +29,20 @@ EXPECTED: BUY
         calibration thresholds are broken.)
 
 ------------------------------------------------------------
-EXPECTED: WAIT (bad reviews / known issues)
+EXPECTED: WAIT (fixable problems — patches plausible)
 ------------------------------------------------------------
-9.  Redfall                | -                        | Bugs                    | WAIT
-10. Gollum                 | Overall quality          | -                       | WAIT
-11. Skull and Bones        | Value for money          | Repetitive gameplay     | WAIT
-12. Forspoken              | Story                    | -                       | WAIT
+9.  Skull and Bones        | Value for money          | Repetitive gameplay     | WAIT
+10. Forspoken              | Story                    | -                       | WAIT
+
+------------------------------------------------------------
+EXPECTED: AVOID (core game bad / abandoned — won't be fixed)
+------------------------------------------------------------
+11. Gollum                 | Overall quality          | -                       | AVOID
+       (Fundamentally panned, studio closed — nothing to wait for.)
+12. Redfall                | -                        | Bugs                    | AVOID
+       (Support officially ended; long-standing complaints unfixed.
+        Tests the abandoned-game rule: WAIT would be acceptable only
+        if the agent can't see the abandonment from patch history.)
 
 ------------------------------------------------------------
 NO PRIORITIES / NO CONCERNS (optional fields left empty)
