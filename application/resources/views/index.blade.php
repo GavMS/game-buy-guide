@@ -174,6 +174,7 @@
                         <button type="button" class="chip" data-value="Multiplayer population">Player population</button>
                         <button type="button" class="chip" data-value="Balance issues">Balance</button>
                         <button type="button" class="chip" data-value="Repetitive gameplay">Repetitive gameplay</button>
+                        <button type="button" class="chip" data-value="Toxic community">Community</button>
                     </div>
                     <input type="hidden" name="concerns" id="concerns">
                 </div>

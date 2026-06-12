@@ -115,6 +115,7 @@ _TOPIC_KEYWORDS = {
     "population": r"player ?base|population|dead game|matchmaking|queue",
     "balance": r"balance|overpowered|\bop\b|nerf|broken (class|build|weapon)",
     "repetitive": r"repetitive|grind|boring|stale|same thing",
+    "community": r"community|toxic|griefing|cheat|hacker|trolls?|chat\b",
     "endgame": r"end ?game|post.?game|late game|replay",
     "content": r"content|hours of|short game|length|amount of",
     "value": r"price|worth|value|expensive|refund|sale",
