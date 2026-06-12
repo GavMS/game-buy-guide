@@ -3,228 +3,212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Diagnostics Dashboard - Smart Buyer's Guide</title>
-    
+    <title>DIAGNOSTICS://DASHBOARD — Smart Buyer's Guide</title>
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Alpine.js CDN -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    
+
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Plus Jakarta Sans', 'sans-serif'],
-                        outfit: ['Outfit', 'sans-serif'],
-                        mono: ['Fira Code', 'monospace'],
+                        mono: ['Geist Mono', 'monospace'],
+                        sans: ['Inter', 'sans-serif'],
                     },
                     colors: {
-                        darkBg: '#090d16',
-                        glassBg: 'rgba(15, 23, 42, 0.65)',
-                        glassBorder: 'rgba(255, 255, 255, 0.08)',
+                        bg: '#1f2228',
                     }
                 }
             }
         }
     </script>
-    
+
     <style>
+        :root {
+            --bg: #1f2228;
+            --text: #ffffff;
+            --text-secondary: rgba(255,255,255,0.7);
+            --text-muted: rgba(255,255,255,0.5);
+            --text-disabled: rgba(255,255,255,0.3);
+            --border: rgba(255,255,255,0.1);
+            --border-strong: rgba(255,255,255,0.2);
+            --surface: rgba(255,255,255,0.03);
+        }
+        * { border-radius: 0 !important; box-shadow: none !important; }
         body {
-            background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
-                        radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.12) 0%, transparent 45%),
-                        #070a13;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
         }
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.45);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        .b-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
         }
+        .b-label {
+            font-family: 'Geist Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
+            font-size: 10px;
+            color: var(--text-disabled);
+        }
+        .b-btn-ghost {
+            font-family: 'Geist Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+        .b-btn-ghost:hover { opacity: 0.5; border-color: var(--border-strong); }
         .terminal-box {
-            background: rgba(8, 12, 24, 0.85);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.25);
+            border-top: 1px solid var(--border);
         }
-        .text-glow-green {
-            text-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        .blink {
+            animation: blink 1.2s steps(2, start) infinite;
         }
-        .text-glow-red {
-            text-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
-        }
-        .glow-border-green {
-            box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);
-            border-color: rgba(16, 185, 129, 0.4);
-        }
-        .glow-border-red {
-            box-shadow: 0 0 25px rgba(239, 68, 68, 0.25);
-            border-color: rgba(239, 68, 68, 0.4);
-        }
-        .pulse-slow {
-            animation: pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.6)); }
-            50% { opacity: .4; filter: drop-shadow(0 0 2px rgba(99, 102, 241, 0.1)); }
-        }
+        @keyframes blink { to { visibility: hidden; } }
         .log-item {
-            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation: slideIn 0.25s ease-out forwards;
         }
         @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(6px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="text-slate-100 flex flex-col items-center justify-center p-4 md:p-8 font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
+<body class="font-sans flex flex-col items-center justify-center p-4 md:p-8 selection:bg-white selection:text-[#1f2228]">
 
-    <div class="w-full max-w-3xl z-10" x-data="diagnosticsHandler('{{ $id }}')" x-init="startPolling()" x-cloak>
+    <div class="w-full max-w-3xl" x-data="diagnosticsHandler('{{ $id }}')" x-init="startPolling()" x-cloak>
         <!-- Header Info -->
-        <div class="text-center mb-6">
-            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold tracking-wider text-pink-400 bg-pink-500/10 border border-pink-500/20 mb-4 outfit-font uppercase">
-                🔍 Diagnostics Pipeline
-            </span>
-            <h1 class="text-3xl md:text-4xl font-bold font-outfit tracking-tight">
-                Evaluating Hardware Capacity
+        <div class="mb-8">
+            <div class="inline-flex items-center gap-2 border border-[rgba(255,255,255,0.1)] px-3 py-1.5 mb-6">
+                <svg class="w-3.5 h-3.5 text-white/50" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                </svg>
+                <span class="font-mono text-[10px] uppercase tracking-[1.4px] text-white/50">Diagnostics Pipeline</span>
+            </div>
+            <h1 class="font-mono font-light text-4xl md:text-5xl tracking-tight mb-3">
+                EVALUATING<span class="text-white/30">_</span>HARDWARE
             </h1>
-            <p class="text-slate-400 text-sm mt-1">
-                Job Session: <span class="font-mono text-xs text-indigo-400 font-semibold">{{ $id }}</span>
+            <p class="font-mono text-xs text-white/30 uppercase tracking-[1.4px]">
+                Session: <span class="text-white/70">{{ $id }}</span>
             </p>
         </div>
 
-        <!-- Target System Specs Tag Panel -->
-        <div class="glass-panel rounded-2xl p-4 mb-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-center text-xs border border-white/5 relative overflow-hidden">
-            <div class="border-r border-white/5 last:border-0 pr-2">
-                <span class="text-slate-500 block uppercase font-semibold mb-1">Target Game</span>
-                <span class="text-slate-200 font-bold block truncate text-sm" title="{{ $specs['game'] }}">🎮 {{ $specs['game'] }}</span>
+        <!-- Target System Specs Panel -->
+        <div class="b-panel mb-6 grid grid-cols-2 md:grid-cols-4">
+            <div class="p-4 border-b md:border-b-0 border-r border-[rgba(255,255,255,0.1)]">
+                <span class="b-label block mb-1.5">Target Game</span>
+                <span class="text-white/70 text-sm block truncate" title="{{ $specs['game'] }}">{{ $specs['game'] }}</span>
             </div>
-            <div class="border-r border-white/5 last:border-0 px-2">
-                <span class="text-slate-500 block uppercase font-semibold mb-1">CPU Spec</span>
-                <span class="text-slate-200 font-bold block truncate text-sm" title="{{ $specs['cpu'] }}">💻 {{ $specs['cpu'] }}</span>
+            <div class="p-4 border-b md:border-b-0 md:border-r border-[rgba(255,255,255,0.1)]">
+                <span class="b-label block mb-1.5">CPU Spec</span>
+                <span class="text-white/70 text-sm block truncate" title="{{ $specs['cpu'] }}">{{ $specs['cpu'] }}</span>
             </div>
-            <div class="border-r border-white/5 last:border-0 px-2">
-                <span class="text-slate-500 block uppercase font-semibold mb-1">GPU Spec</span>
-                <span class="text-slate-200 font-bold block truncate text-sm" title="{{ $specs['gpu'] }}">🔌 {{ $specs['gpu'] }}</span>
+            <div class="p-4 border-r border-[rgba(255,255,255,0.1)]">
+                <span class="b-label block mb-1.5">GPU Spec</span>
+                <span class="text-white/70 text-sm block truncate" title="{{ $specs['gpu'] }}">{{ $specs['gpu'] }}</span>
             </div>
-            <div class="last:border-0 pl-2">
-                <span class="text-slate-500 block uppercase font-semibold mb-1">System RAM</span>
-                <span class="text-slate-200 font-bold block text-sm">💾 {{ $specs['ram'] }}</span>
+            <div class="p-4">
+                <span class="b-label block mb-1.5">System RAM</span>
+                <span class="text-white/70 text-sm block">{{ $specs['ram'] }}</span>
             </div>
         </div>
 
         <!-- Processing Status / Verdict Area -->
         <div class="mb-6">
             <!-- Processing Layout -->
-            <div x-show="status === 'processing'" class="glass-panel rounded-2xl p-6 text-center border-indigo-500/10">
-                <div class="flex items-center justify-center gap-3 mb-3">
-                    <span class="flex h-3 w-3 relative">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
-                    </span>
-                    <span class="text-sm font-semibold tracking-widest text-indigo-400 font-outfit uppercase pulse-slow">
-                        Analyzing System Architecture & Requirements...
+            <div x-show="status === 'processing'" class="b-panel p-6">
+                <div class="flex items-center gap-3 mb-5">
+                    <span class="w-2 h-2 bg-white blink"></span>
+                    <span class="font-mono text-xs uppercase tracking-[1.4px] text-white/70">
+                        Analyzing System Architecture &amp; Requirements...
                     </span>
                 </div>
-                
-                <!-- Animated Progress Bar -->
-                <div class="w-full bg-slate-900/60 rounded-full h-2 overflow-hidden border border-white/5 mt-4">
-                    <div class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-full rounded-full animate-[progress_15s_ease-out-in_infinite]" 
-                         :style="'width: ' + (logs.length * 10) + '%'"></div>
+                <!-- Progress Bar -->
+                <div class="w-full h-1 bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] overflow-hidden">
+                    <div class="bg-white h-full transition-all duration-700"
+                         :style="'width: ' + Math.min(logs.length * 10, 95) + '%'"></div>
                 </div>
             </div>
 
             <!-- Verdict Reveal Layout (Completed State) -->
-            <div x-show="status === 'completed'" 
-                 x-transition:enter="transition ease-out duration-700 transform"
-                 x-transition:enter-start="opacity-0 scale-95 translate-y-4"
-                 x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                 class="glass-panel rounded-3xl p-6 md:p-8 border relative overflow-hidden"
-                 :class="verdict === 'BUY' ? 'glow-border-green' : 'glow-border-red'">
-                
-                <div class="absolute -right-24 -bottom-24 w-48 h-48 rounded-full blur-3xl opacity-20"
-                     :class="verdict === 'BUY' ? 'bg-emerald-500' : 'bg-red-500'"></div>
+            <div x-show="status === 'completed'"
+                 x-transition:enter="transition ease-out duration-500 transform"
+                 x-transition:enter-start="opacity-0 translate-y-2"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 class="b-panel p-6 md:p-8"
+                 :class="verdict === 'BUY' ? 'border-[rgba(255,255,255,0.2)]' : ''">
 
-                <div class="flex flex-col md:flex-row items-center gap-6">
+                <div class="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8">
                     <!-- Verdict Badge -->
-                    <div class="flex-shrink-0">
-                        <template x-if="verdict === 'BUY'">
-                            <div class="w-28 h-28 md:w-32 md:h-32 rounded-full border-4 border-emerald-500/30 flex flex-col items-center justify-center bg-emerald-500/10 shadow-lg shadow-emerald-500/20">
-                                <span class="text-xs uppercase tracking-widest font-semibold text-emerald-400">Verdict</span>
-                                <span class="text-3xl md:text-4xl font-extrabold font-outfit text-emerald-400 text-glow-green tracking-wide">BUY</span>
-                                <span class="text-xl mt-1">✨</span>
-                            </div>
-                        </template>
-                        <template x-if="verdict === 'WAIT'">
-                            <div class="w-28 h-28 md:w-32 md:h-32 rounded-full border-4 border-red-500/30 flex flex-col items-center justify-center bg-red-500/10 shadow-lg shadow-red-500/20">
-                                <span class="text-xs uppercase tracking-widest font-semibold text-red-400">Verdict</span>
-                                <span class="text-3xl md:text-4xl font-extrabold font-outfit text-red-400 text-glow-red tracking-wide">WAIT</span>
-                                <span class="text-xl mt-1">⚠️</span>
-                            </div>
-                        </template>
+                    <div class="flex-shrink-0 border px-8 py-6 text-center"
+                         :class="verdict === 'BUY' ? 'border-white bg-white text-[#1f2228]' : 'border-[rgba(255,255,255,0.2)] text-white'">
+                        <span class="font-mono text-[10px] uppercase tracking-[1.4px] block mb-1 opacity-50">Verdict</span>
+                        <span class="font-mono font-light text-4xl md:text-5xl tracking-tight" x-text="verdict"></span>
                     </div>
 
                     <!-- Summary details -->
-                    <div class="flex-grow text-center md:text-left">
-                        <h3 class="text-lg md:text-xl font-bold font-outfit mb-2"
-                            :class="verdict === 'BUY' ? 'text-emerald-300' : 'text-red-300'">
+                    <div class="flex-grow">
+                        <h3 class="font-mono text-xs uppercase tracking-[1.4px] text-white/50 mb-3">
                             Recommendation Summary
                         </h3>
-                        <p class="text-slate-300 text-sm md:text-base font-light leading-relaxed" style="white-space: pre-line;" x-text="summary"></p>
+                        <p class="text-white/70 text-sm md:text-base font-light leading-relaxed" style="white-space: pre-line;" x-text="summary"></p>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Terminal Panel - Agent Thought Process -->
-        <div class="glass-panel rounded-2xl overflow-hidden shadow-2xl flex flex-col border border-white/5">
+        <div class="b-panel flex flex-col">
             <!-- Window Header -->
-            <div class="bg-slate-900/90 px-4 py-3 flex items-center justify-between border-b border-white/5 select-none">
-                <div class="flex items-center gap-2">
-                    <span class="w-3 w-3 h-3 rounded-full bg-red-500/80 block"></span>
-                    <span class="w-3 w-3 h-3 rounded-full bg-yellow-500/80 block"></span>
-                    <span class="w-3 w-3 h-3 rounded-full bg-green-500/80 block"></span>
+            <div class="px-4 py-3 flex items-center justify-between select-none">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 border border-[rgba(255,255,255,0.3)] block"></span>
+                    <span class="w-2.5 h-2.5 border border-[rgba(255,255,255,0.3)] block"></span>
+                    <span class="w-2.5 h-2.5 border border-[rgba(255,255,255,0.3)] block"></span>
                 </div>
-                <span class="text-xs tracking-wider text-slate-400 uppercase font-mono font-medium">Agent Thought Process</span>
-                <span class="text-xs text-slate-500 font-mono">mcp_client.log</span>
+                <span class="font-mono text-[10px] uppercase tracking-[1.4px] text-white/50">Agent Thought Process</span>
+                <span class="font-mono text-[10px] text-white/30">mcp_client.log</span>
             </div>
 
             <!-- Terminal Content Box -->
-            <div id="log-container" class="terminal-box h-72 overflow-y-auto p-4 font-mono text-xs md:text-sm text-slate-300 space-y-2.5 leading-relaxed scroll-smooth scrollbar-thin scrollbar-thumb-slate-800">
+            <div id="log-container" class="terminal-box h-72 overflow-y-auto p-4 font-mono text-xs md:text-sm text-white/70 space-y-2.5 leading-relaxed scroll-smooth">
                 <template x-for="(log, index) in logs" :key="index">
                     <div class="log-item flex gap-2">
-                        <span class="text-indigo-500/80 select-none">&gt;</span>
+                        <span class="text-white/30 select-none">&gt;</span>
                         <span x-text="log" :class="{
-                            'text-emerald-400': log.includes('[Agent] Diagnostics complete') || log.includes('BUY'),
-                            'text-yellow-400/90': log.includes('[Agent] Running final') || log.includes('WAIT'),
-                            'text-indigo-400': log.includes('[Diagnose]')
+                            'text-white': log.includes('[Agent] Diagnostics complete') || log.includes('BUY'),
+                            'text-white/90': log.includes('[Agent] Running final') || log.includes('WAIT'),
+                            'text-white/50': log.includes('[Diagnose]')
                         }"></span>
                     </div>
                 </template>
-                <div x-show="logs.length === 0" class="text-slate-500 animate-pulse py-2 italic">
-                    Establishing handshakes with agent pipeline...
+                <div x-show="logs.length === 0" class="text-white/30 py-2">
+                    Establishing handshakes with agent pipeline...<span class="blink">_</span>
                 </div>
             </div>
         </div>
 
         <!-- Dashboard Action Controls -->
-        <div class="mt-6 flex justify-center gap-4">
-            <a href="{{ route('agent.index') }}" class="px-6 py-3.5 rounded-xl font-bold bg-slate-900 border border-white/10 text-slate-300 hover:text-white hover:bg-slate-800/80 transition duration-150 flex items-center gap-2 text-sm uppercase tracking-wide">
-                <span>↩ New Diagnostics Scan</span>
+        <div class="mt-6">
+            <a href="{{ route('agent.index') }}" class="b-btn-ghost inline-flex items-center gap-2 px-6 py-3.5 text-xs">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                </svg>
+                <span>New Diagnostics Scan</span>
             </a>
         </div>
     </div>
@@ -241,10 +225,7 @@
                 pollingInterval: null,
 
                 startPolling() {
-                    // Poll immediately on load
                     this.poll();
-                    
-                    // Setup interval to poll status every 2 seconds
                     this.pollingInterval = setInterval(() => {
                         this.poll();
                     }, 2000);
@@ -265,12 +246,10 @@
 
                         const data = await response.json();
 
-                        // Append logs incrementally to prevent DOM replacement flickering
                         if (data.logs && Array.isArray(data.logs)) {
                             data.logs.forEach(line => {
                                 if (!this.logs.includes(line)) {
                                     this.logs.push(line);
-                                    // Scroll terminal container to the bottom after Alpine updates DOM
                                     this.$nextTick(() => {
                                         this.scrollTerminal();
                                     });
