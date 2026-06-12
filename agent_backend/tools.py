@@ -26,6 +26,11 @@ sentiment_analyzer = pipeline(
 
 from langchain_core.tools import tool  # @tool turns a normal function into an AI-usable tool
 
+# Server-side stash of the most recent get_steam_reviews result, keyed by the
+# matched game name (lowercase) plus a "last" entry. Lets classify_reviews read
+# the data directly instead of having the LLM relay (and corrupt) the JSON.
+_review_cache = {}
+
 
 def _sentiment_scores(text: str):
     """Collapse the 5-star model's output into (positive_pct, negative_pct).
@@ -95,12 +100,21 @@ def get_steam_reviews(game_name: str) -> str:
         _clean(r["review"]) for r in reviews_data.get("reviews", []) if r.get("review")
     ]
 
-    # LangChain tools must return strings, so we convert the dict to a JSON string
-    return json.dumps({
+    result = {
         "game_name": found_name,
         "app_id": app_id,
         "reviews": review_texts,
-    })
+    }
+
+    # Stash the reviews server-side so classify_reviews can read them directly.
+    # Round-tripping 50 reviews of JSON through the LLM corrupts escapes/quotes
+    # ("Invalid \\uXXXX escape", "Expecting ',' delimiter"), so the model never
+    # relays the data — it just calls classify_reviews afterwards.
+    _review_cache["last"] = result
+    _review_cache[found_name.lower()] = result
+
+    # LangChain tools must return strings, so we convert the dict to a JSON string
+    return json.dumps(result)
 
 
 # Maps the frontend's priority/concern chips (and common synonyms) to regexes
@@ -140,23 +154,22 @@ def _relevance_pattern(focus_topics: str):
 
 
 @tool
-def classify_reviews(reviews_json: str, focus_topics: str = "") -> str:
-    """Run sentiment and meme-detection models on Steam reviews.
+def classify_reviews(game_name: str = "", focus_topics: str = "") -> str:
+    """Run sentiment and meme-detection models on the reviews already fetched
+    by get_steam_reviews (call that tool first).
 
-    Input: reviews_json — JSON string from get_steam_reviews.
+    Input: game_name — the game whose reviews to classify (optional; defaults
+           to the most recently fetched reviews).
            focus_topics — optional comma-separated topics the user cares about
            (e.g. "Performance, Bugs"); matching reviews are preferred in the output.
     Output: JSON with counts and up to 8 genuine review details, preferring
             reviews relevant to focus_topics (marked with matches_your_topics).
     """
-    # Parse the JSON string back into a Python dict.
-    # strict=False tolerates raw control characters (newlines/tabs) that can
-    # survive in Steam review text when the LLM relays this JSON between tools —
-    # otherwise json.loads raises "Invalid control character" and the run 500s.
-    data = json.loads(reviews_json, strict=False)
-
-    if "error" in data:
-        return reviews_json  # pass the error straight through
+    # Read the stashed reviews directly — the LLM never relays the review JSON,
+    # which used to corrupt escapes/quotes and crash json.loads.
+    data = _review_cache.get(game_name.strip().lower()) or _review_cache.get("last")
+    if data is None:
+        return json.dumps({"error": "No fetched reviews found — call get_steam_reviews first."})
 
     reviews = data.get("reviews", [])
     if not reviews:
@@ -234,21 +247,29 @@ def get_recent_patches(game_name: str) -> str:
     app_id = items[0]["id"]
     found_name = items[0]["name"]
 
-    # Steam News API — filtered to the "steam_updates" feed (official patch notes only)
+    # Steam News API — the old "steam_updates" feed returns nothing anymore;
+    # developer patch notes are posted as community announcements, so we pull
+    # those and keep the ones that look like updates/patches.
     news_url = "https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/"
     news_params = {
         "appid": app_id,
-        "count": 10,
+        "count": 20,
         "maxlength": 300,   # limit each article to 300 characters
         "format": "json",
-        "feeds": "steam_updates",
+        "feeds": "steam_community_announcements",
     }
     news_resp = requests.get(news_url, params=news_params, timeout=10)
     news_resp.raise_for_status()
     news_data = news_resp.json()
 
-    # Take only the 5 most recent patch entries
-    news_items = news_data.get("appnews", {}).get("newsitems", [])[:5]
+    all_items = news_data.get("appnews", {}).get("newsitems", [])
+
+    # Prefer items that look like actual patches/updates; if none match
+    # (some devs title posts loosely), fall back to the raw announcements
+    # so the agent can still see whether the game gets ANY developer activity.
+    patch_re = re.compile(r"update|patch|hotfix|fix(es|ed)?\b|version \d|v\d+\.\d", re.IGNORECASE)
+    patch_items = [i for i in all_items if patch_re.search(i.get("title", ""))]
+    news_items = (patch_items or all_items)[:5]
 
     patches = []
     for item in news_items:

@@ -18,7 +18,7 @@ CRITICAL: Always pass the user's game name to the tools EXACTLY as the user wrot
 Follow these steps:
 
 1. Use get_steam_reviews to fetch recent reviews for the game.
-2. Use classify_reviews to analyse their sentiment and filter out joke reviews. If the user stated priorities or concerns, pass them as the focus_topics argument (e.g. focus_topics="Performance, Bugs") — the tool will then surface reviews about those topics, marked with matches_your_topics. Note the positive vs negative counts and what genuine reviewers are actually saying.
+2. Use classify_reviews to analyse their sentiment and filter out joke reviews. It reads the reviews fetched in step 1 automatically — do NOT paste the review JSON into it; just pass the game name. If the user stated priorities or concerns, pass them as the focus_topics argument (e.g. focus_topics="Performance, Bugs") — the tool will then surface reviews about those topics, marked with matches_your_topics. Note the positive vs negative counts and what genuine reviewers are actually saying.
 3. Identify the recurring themes: what do genuine reviewers repeatedly complain about, and what do they repeatedly praise?
 4. If the genuine negative reviews mention bugs, crashes, or performance issues, use get_recent_patches to check whether the developers have addressed those issues recently.
 {priorities_block}

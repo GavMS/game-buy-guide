@@ -6,7 +6,7 @@ Inputs match the current form:
   Priorities: Overall quality, Performance & optimization, Value for money,
               Story, Multiplayer, Endgame content, Content quantity
   Concerns:   Bugs, Crashes, Performance problems, Multiplayer population,
-              Balance issues, Repetitive gameplay
+              Balance issues, Repetitive gameplay, Toxic community
 
 ------------------------------------------------------------
 EXPECTED: BUY
@@ -31,39 +31,53 @@ EXPECTED: BUY
 ------------------------------------------------------------
 EXPECTED: WAIT (fixable problems — patches plausible)
 ------------------------------------------------------------
-9.  Skull and Bones        | Value for money          | Repetitive gameplay     | WAIT
-10. Forspoken              | Story                    | -                       | WAIT
+9.  S.T.A.L.K.E.R. 2       | -                        | Bugs, Performance problems | WAIT
+       (28/50 recent positive, checked 2026-06-12 — squarely in the
+        WAIT band. Complaints are bugs/performance, and the devs ship
+        regular content updates ("Sealed Truth" 2026-04), so it's
+        fixable, not abandoned. Best-odds WAIT case.)
+10. Starfield              | Content quantity         | Repetitive gameplay     | WAIT
+       (23/50 recent positive, checked 2026-06-12. Still updated by
+        the dev, so WAIT — but complaints lean toward core design,
+        so AVOID is a defensible outcome. Borderline WAIT/AVOID.)
+11. EA SPORTS WRC          | -                        | Bugs                    | WAIT
+       (31/50 recent positive, checked 2026-06-12.)
+12. Forspoken              | Story                    | -                       | WAIT
 
 ------------------------------------------------------------
 EXPECTED: AVOID (core game bad / abandoned — won't be fixed)
 ------------------------------------------------------------
-11. Gollum                 | Overall quality          | -                       | AVOID
+13. Gollum                 | Overall quality          | -                       | AVOID
        (Fundamentally panned, studio closed — nothing to wait for.)
-12. Redfall                | -                        | Bugs                    | AVOID
+14. Redfall                | -                        | Bugs                    | AVOID
        (Support officially ended; long-standing complaints unfixed.
         Tests the abandoned-game rule: WAIT would be acceptable only
         if the agent can't see the abandonment from patch history.)
+15. Skull and Bones        | Value for money          | Repetitive gameplay     | AVOID
+       (60% recent positive but observed verdict was AVOID in testing
+        2026-06-12 — complaints read as core-game/monetisation, which
+        matches the AVOID rule. Moved here from expected-WAIT.)
 
 ------------------------------------------------------------
 NO PRIORITIES / NO CONCERNS (optional fields left empty)
 ------------------------------------------------------------
-13. Stardew Valley         | -                        | -                       | BUY
-14. Battlefield 2042       | -                        | -                       | mixed/borderline
+16. Stardew Valley         | -                        | -                       | BUY
+17. Battlefield 2042       | -                        | -                       | mixed/borderline
        (Verdict should hinge purely on the recent review ratio.)
 
 ------------------------------------------------------------
 TOPIC-FILTER CASES (focus_topics relevance selection)
 ------------------------------------------------------------
-15. Cyberpunk 2077         | Performance & optimization | Bugs, Crashes         | BUY
+18. Cyberpunk 2077         | Performance & optimization | Bugs, Crashes         | BUY
        (Launched broken, now patched — tests patch-history step AND
         that [topic match] snippets surface performance reviews.)
-16. No Man's Sky           | Content quantity         | Repetitive gameplay     | BUY
+19. No Man's Sky           | Content quantity         | Repetitive gameplay     | BUY
        (Same redemption-arc test as above.)
-17. Destiny 2              | Endgame content          | Multiplayer population  | borderline
+20. Destiny 2              | Endgame content          | Multiplayer population  | borderline
        (Live service — reviews swing with seasons; the "What you asked
         about" section should address population honestly.)
-18. Apex Legends           | Multiplayer              | Balance issues          | borderline
-       (F2P; tests balance-complaint keyword matching.)
+21. Apex Legends           | Multiplayer              | Balance issues, Toxic community | borderline
+       (F2P; tests balance + community keyword matching.)
 
 ------------------------------------------------------------
 NOTES
