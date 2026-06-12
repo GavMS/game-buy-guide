@@ -58,7 +58,7 @@ def _clean(text: str) -> str:
 
 @tool
 def get_steam_reviews(game_name: str) -> str:
-    """Search the Steam store for a game and fetch 15-20 recent English reviews."""
+    """Search the Steam store for a game and fetch up to 50 recent English reviews."""
 
     # Step 1: search Steam for the game name to get its numeric app ID
     search_url = "https://store.steampowered.com/api/storesearch/"
@@ -83,7 +83,7 @@ def get_steam_reviews(game_name: str) -> str:
         "language": "english",
         "review_type": "all",       # include both positive and negative
         "purchase_type": "all",
-        "num_per_page": 20,
+        "num_per_page": 50,
         "filter": "recent",         # most recent first
     }
     reviews_resp = requests.get(reviews_url, params=reviews_params, timeout=10)
@@ -103,12 +103,50 @@ def get_steam_reviews(game_name: str) -> str:
     })
 
 
+# Maps the frontend's priority/concern chips (and common synonyms) to regexes
+# that detect when a review actually talks about that topic.
+_TOPIC_KEYWORDS = {
+    "performance": r"\bfps\b|stutter|lag|frame ?rate|frame ?drop|optimi[sz]|performance|low.?end|high.?end",
+    "optimization": r"\bfps\b|stutter|lag|frame ?rate|optimi[sz]|performance",
+    "bugs": r"\bbug|glitch|broken|janky?\b",
+    "crashes": r"crash|freeze|\bctd\b|black screen|blue ?screen",
+    "story": r"story|plot|writing|narrative|characters?|dialogue|ending",
+    "multiplayer": r"multiplayer|co.?op|online|pvp|server",
+    "population": r"player ?base|population|dead game|matchmaking|queue",
+    "balance": r"balance|overpowered|\bop\b|nerf|broken (class|build|weapon)",
+    "repetitive": r"repetitive|grind|boring|stale|same thing",
+    "endgame": r"end ?game|post.?game|late game|replay",
+    "content": r"content|hours of|short game|length|amount of",
+    "value": r"price|worth|value|expensive|refund|sale",
+    "quality": r"polish|quality|masterpiece|unfinished|rushed",
+}
+
+
+def _relevance_pattern(focus_topics: str):
+    """Build one regex matching any of the user's topics; None if no topics given."""
+    if not focus_topics.strip():
+        return None
+    patterns = []
+    lowered = focus_topics.lower()
+    for key, pattern in _TOPIC_KEYWORDS.items():
+        if key in lowered:
+            patterns.append(pattern)
+    # Also match any literal word the user gave that we don't have a mapping for
+    for word in re.findall(r"[a-z]{4,}", lowered):
+        if not any(word in k for k in _TOPIC_KEYWORDS):
+            patterns.append(re.escape(word))
+    return re.compile("|".join(patterns), re.IGNORECASE) if patterns else None
+
+
 @tool
-def classify_reviews(reviews_json: str) -> str:
+def classify_reviews(reviews_json: str, focus_topics: str = "") -> str:
     """Run sentiment and meme-detection models on Steam reviews.
 
-    Input: JSON string from get_steam_reviews.
-    Output: JSON with counts and top 8 genuine review details.
+    Input: reviews_json — JSON string from get_steam_reviews.
+           focus_topics — optional comma-separated topics the user cares about
+           (e.g. "Performance, Bugs"); matching reviews are preferred in the output.
+    Output: JSON with counts and up to 8 genuine review details, preferring
+            reviews relevant to focus_topics (marked with matches_your_topics).
     """
     # Parse the JSON string back into a Python dict.
     # strict=False tolerates raw control characters (newlines/tabs) that can
@@ -127,7 +165,9 @@ def classify_reviews(reviews_json: str) -> str:
     genuine_count = 0
     positive_count = 0
     negative_count = 0
-    genuine_reviews = []  # we'll collect the top 8 genuine ones here
+    all_genuine = []  # every genuine review with metadata; we pick the top 8 after
+
+    relevance = _relevance_pattern(focus_topics)
 
     for text in reviews:
         # meme_model returns 1 if the review is a joke/meme, 0 if genuine
@@ -150,21 +190,28 @@ def classify_reviews(reviews_json: str) -> str:
             else:
                 negative_count += 1
 
-            # Save details for up to 8 genuine reviews to show the agent
-            if len(genuine_reviews) < 8:
-                genuine_reviews.append({
-                    "snippet": text[:200],  # first 200 chars as a preview
-                    "sentiment": "positive" if is_positive else "negative",
-                    "confidence_pct": round(confidence * 100, 1),
-                    "is_genuine": True,
-                })
+            all_genuine.append({
+                "snippet": text[:200],  # first 200 chars as a preview
+                "sentiment": "positive" if is_positive else "negative",
+                "confidence_pct": round(confidence * 100, 1),
+                "is_genuine": True,
+                "matches_your_topics": bool(relevance and relevance.search(text)),
+            })
+
+    # Pick up to 8 snippets to show the agent: topic-relevant reviews first
+    # (so the answer can quote reviewers talking about what the user asked),
+    # then fill the rest in original (most recent) order.
+    relevant = [r for r in all_genuine if r["matches_your_topics"]]
+    others = [r for r in all_genuine if not r["matches_your_topics"]]
+    top_reviews = (relevant + others)[:8]
 
     return json.dumps({
         "total_count": total,
         "genuine_count": genuine_count,
         "positive_count": positive_count,
         "negative_count": negative_count,
-        "top_genuine_reviews": genuine_reviews,
+        "relevant_to_user_topics_count": len(relevant),
+        "top_genuine_reviews": top_reviews,
     })
 
 

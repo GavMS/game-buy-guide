@@ -1,5 +1,7 @@
 import os
 import sys
+import threading
+import uuid
 
 # Make sure agent_backend/ is on the path so "from agent import ..." works
 # when uvicorn imports this file as a module from the project root
@@ -16,10 +18,9 @@ from pydantic import BaseModel
 from agent import run_agent
 
 # FastAPI is the web framework — it handles incoming HTTP requests
-app = FastAPI(title="Game Buy Guide API", version="1.0.0")
+app = FastAPI(title="Game Buy Guide API", version="2.0.0")
 
 # CORS lets the frontend (running on a different port) talk to this server
-# allow_origins=["*"] means any website/app can call it — fine for development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,16 +28,49 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# In-memory job store: {job_id: {"status", "logs", "verdict", "summary", "message"}}
+# Fine for a single-process dev server; restartting the server clears jobs.
+_jobs = {}
+_jobs_lock = threading.Lock()
 
-# These classes define the shape of the JSON the server expects and returns
-# Pydantic automatically validates the incoming request against this
+
 class GuideRequest(BaseModel):
-    game_name: str   # e.g. "Elden Ring"
-    hardware: str    # e.g. "RTX 3070, 16GB RAM"
+    game_name: str        # e.g. "Elden Ring"
+    priorities: str = ""  # e.g. "Performance & optimization, Story" (optional)
+    concerns: str = ""    # e.g. "Bugs, Crashes" (optional)
+    job_id: str = ""      # optional — Laravel passes its tracking UUID so both sides share an ID
 
 
-class GuideResponse(BaseModel):
-    verdict: str     # the BUY / WAIT text from the agent
+def _parse_verdict(text: str) -> str:
+    """Pull BUY/WAIT out of the agent's answer (first keyword wins, WAIT default)."""
+    upper = text.upper()
+    buy, wait = upper.find("BUY"), upper.find("WAIT")
+    if buy != -1 and (wait == -1 or buy < wait):
+        return "BUY"
+    return "WAIT"
+
+
+def _run_job(job_id: str, req: GuideRequest):
+    """Background thread: run the agent, streaming log lines into the job store."""
+    def log(line: str):
+        with _jobs_lock:
+            _jobs[job_id]["logs"].append(line)
+
+    try:
+        result = run_agent(req.game_name.strip(), req.priorities.strip(),
+                           req.concerns.strip(), log=log)
+        with _jobs_lock:
+            _jobs[job_id].update({
+                "status": "completed",
+                "verdict": _parse_verdict(result),
+                "summary": result,
+            })
+    except Exception as exc:
+        with _jobs_lock:
+            _jobs[job_id].update({
+                "status": "error",
+                "message": str(exc),
+            })
 
 
 # Simple health check endpoint — useful to confirm the server is running
@@ -45,19 +79,34 @@ def health():
     return {"status": "ok"}
 
 
-# Main endpoint — Person 3's frontend sends a POST request here
-@app.post("/guide", response_model=GuideResponse)
+# Main endpoint — starts the analysis in the background and returns immediately.
+# The frontend then polls GET /status/{job_id} for live logs and the verdict.
+@app.post("/guide")
 def guide(req: GuideRequest):
-    # Reject requests with blank fields before bothering the AI
     if not req.game_name.strip():
         raise HTTPException(status_code=400, detail="game_name cannot be empty")
-    if not req.hardware.strip():
-        raise HTTPException(status_code=400, detail="hardware cannot be empty")
 
-    try:
-        result = run_agent(req.game_name.strip(), req.hardware.strip())
-    except Exception as exc:
-        # If the agent crashes for any reason, return a 500 error with the message
-        raise HTTPException(status_code=500, detail=str(exc))
+    job_id = req.job_id.strip() or str(uuid.uuid4())
+    with _jobs_lock:
+        _jobs[job_id] = {"status": "processing", "logs": [], "verdict": None,
+                         "summary": None, "message": None}
 
-    return GuideResponse(verdict=result)
+    threading.Thread(target=_run_job, args=(job_id, req), daemon=True).start()
+    return {"status": "started", "job_id": job_id}
+
+
+# Polled by Laravel's checkStatus() — returns live logs while processing,
+# and verdict + summary once completed.
+@app.get("/status/{job_id}")
+def status(job_id: str):
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Unknown job id")
+        return {
+            "status": job["status"],
+            "logs": list(job["logs"]),
+            "verdict": job["verdict"],
+            "summary": job["summary"],
+            "message": job["message"],
+        }

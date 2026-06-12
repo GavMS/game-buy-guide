@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>GAME://BUY-GUIDE — AI Hardware Compatibility Checker</title>
-    <meta name="description" content="AI agent that checks your hardware against a game's requirements and tells you whether to buy or wait.">
-    <meta property="og:title" content="GAME://BUY-GUIDE">
-    <meta property="og:description" content="AI-powered buy-or-wait verdicts for your hardware.">
+    <title>BUY_OR_WAIT — Should you buy this game right now?</title>
+    <meta name="description" content="AI agent that reads recent Steam reviews and patch notes to tell you whether a game is worth buying right now.">
+    <meta property="og:title" content="BUY_OR_WAIT">
+    <meta property="og:description" content="Recent Steam reviews + patch history, analyzed. One verdict: buy or wait.">
     <meta property="og:type" content="website">
 
     <!-- Google Fonts -->
@@ -28,9 +28,6 @@
                     },
                     colors: {
                         bg: '#1f2228',
-                    },
-                    borderRadius: {
-                        none: '0px',
                     }
                 }
             }
@@ -47,7 +44,6 @@
             --border: rgba(255,255,255,0.1);
             --border-strong: rgba(255,255,255,0.2);
             --surface: rgba(255,255,255,0.03);
-            --radius: 0px;
         }
         * { border-radius: 0 !important; box-shadow: none !important; }
         body {
@@ -89,8 +85,25 @@
         }
         .b-btn:hover { opacity: 0.5; }
         .b-btn:disabled { opacity: 0.3; cursor: wait; }
-        .dim-hover { transition: all 0.15s ease; cursor: pointer; }
-        .dim-hover:hover { opacity: 0.5; }
+        .chip {
+            font-family: 'Geist Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
+            font-size: 10px;
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .chip:hover { opacity: 0.5; }
+        .chip.active {
+            background: #ffffff;
+            color: #1f2228;
+            border-color: #ffffff;
+        }
         .loader-ring {
             border: 2px solid rgba(31,34,40,0.2);
             border-top: 2px solid #1f2228;
@@ -100,7 +113,6 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        select.b-input option { background: #1f2228; color: #ffffff; }
     </style>
 </head>
 <body class="font-sans flex flex-col items-center justify-center p-4 md:p-8 selection:bg-white selection:text-[#1f2228]">
@@ -110,102 +122,94 @@
         <div class="mb-12">
             <div class="inline-flex items-center gap-2 border border-[rgba(255,255,255,0.1)] px-3 py-1.5 mb-8">
                 <svg class="w-3.5 h-3.5 text-white/50" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
                 </svg>
-                <span class="font-mono text-[10px] uppercase tracking-[1.4px] text-white/50">AI-Powered Gaming Diagnostics</span>
+                <span class="font-mono text-[10px] uppercase tracking-[1.4px] text-white/50">Steam Review Intelligence</span>
             </div>
             <h1 class="font-mono font-light text-5xl md:text-7xl tracking-tight leading-[0.95] mb-6">
                 BUY<span class="text-white/30">_</span>OR<span class="text-white/30">_</span>WAIT
             </h1>
             <p class="text-white/50 text-base font-light leading-relaxed max-w-lg">
-                Enter your target game and system specifications. Our AI agent compiles requirement metrics to deliver a comprehensive purchase recommendation.
+                Our AI reads the latest Steam reviews and patch notes for any game, filters out the joke reviews, and tells you whether it's worth buying <span class="text-white/70">right now</span> — or waiting for fixes.
             </p>
         </div>
 
         <!-- Main Form Card -->
         <div id="form-card" class="b-panel p-6 md:p-8 transition-all duration-300">
-            <form id="check-form" class="space-y-7">
+            <form id="check-form" class="space-y-8">
                 @csrf
 
-                <!-- Target Game -->
+                <!-- Game Name (required) -->
                 <div>
-                    <label for="game" class="b-label block mb-2">[01] Target Game</label>
+                    <label for="game" class="b-label block mb-2">[01] Which game? <span class="text-white/70">*</span></label>
                     <input type="text" id="game" name="game" required placeholder="e.g., Cyberpunk 2077"
                         class="b-input w-full py-3.5 px-4 text-base">
+                    <p class="text-white/30 text-xs mt-2 font-light">Any game on Steam — new releases included.</p>
                 </div>
 
-                <!-- Specs Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-7">
-                    <div>
-                        <label for="cpu" class="b-label block mb-2">[02] CPU Spec</label>
-                        <input type="text" id="cpu" name="cpu" list="cpu-suggestions" required placeholder="e.g., AMD Ryzen 7 7800X3D"
-                            class="b-input w-full py-3.5 px-4 text-base">
-                        <datalist id="cpu-suggestions">
-                            <option value="AMD Ryzen 7 7800X3D">
-                            <option value="Intel Core i7-14700K">
-                            <option value="AMD Ryzen 5 7600X">
-                            <option value="Intel Core i5-13600K">
-                            <option value="Intel Core i9-14900K">
-                            <option value="AMD Ryzen 9 7950X">
-                            <option value="Intel Core i3-12100F">
-                            <option value="Integrated Graphics CPU">
-                        </datalist>
-                    </div>
-
-                    <div>
-                        <label for="gpu" class="b-label block mb-2">[03] GPU Spec</label>
-                        <input type="text" id="gpu" name="gpu" list="gpu-suggestions" required placeholder="e.g., NVIDIA RTX 4070"
-                            class="b-input w-full py-3.5 px-4 text-base">
-                        <datalist id="gpu-suggestions">
-                            <option value="NVIDIA GeForce RTX 4090">
-                            <option value="NVIDIA GeForce RTX 4070 Super">
-                            <option value="AMD Radeon RX 7800 XT">
-                            <option value="NVIDIA GeForce RTX 3060">
-                            <option value="AMD Radeon RX 6600">
-                            <option value="NVIDIA GeForce GTX 1650">
-                            <option value="Intel UHD Graphics 770">
-                            <option value="AMD Radeon RX 580">
-                        </datalist>
-                    </div>
-                </div>
-
-                <!-- RAM Selection -->
+                <!-- Priorities (optional) -->
                 <div>
-                    <label for="ram" class="b-label block mb-2">[04] System RAM Capacity</label>
-                    <div class="relative">
-                        <select id="ram" name="ram" required
-                            class="b-input w-full py-3.5 px-4 text-base appearance-none cursor-pointer">
-                            <option value="" disabled selected>Select RAM size...</option>
-                            <option value="8GB">8 GB DDR4 / DDR5 (Basic)</option>
-                            <option value="16GB">16 GB DDR4 / DDR5 (Recommended)</option>
-                            <option value="32GB">32 GB DDR5 (Performance)</option>
-                            <option value="64GB">64 GB DDR5 (Enthusiast)</option>
-                        </select>
-                        <span class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                            <svg class="w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                            </svg>
-                        </span>
+                    <label class="b-label block mb-1">[02] What matters most to you? <span class="normal-case tracking-normal text-white/30">— optional</span></label>
+                    <p class="text-white/30 text-xs mb-3 font-light">We'll weight the review analysis toward what you pick.</p>
+                    <div class="flex flex-wrap gap-2" id="priority-chips" data-target="priorities">
+                        <button type="button" class="chip" data-value="Overall quality">Overall quality</button>
+                        <button type="button" class="chip" data-value="Performance & optimization">Performance</button>
+                        <button type="button" class="chip" data-value="Value for money">Value for money</button>
+                        <button type="button" class="chip" data-value="Story">Story</button>
+                        <button type="button" class="chip" data-value="Multiplayer">Multiplayer</button>
+                        <button type="button" class="chip" data-value="Endgame content">Endgame</button>
+                        <button type="button" class="chip" data-value="Content quantity">Content quantity</button>
                     </div>
+                    <input type="hidden" name="priorities" id="priorities">
+                </div>
+
+                <!-- Concerns (optional) -->
+                <div>
+                    <label class="b-label block mb-1">[03] Any specific concerns? <span class="normal-case tracking-normal text-white/30">— optional</span></label>
+                    <p class="text-white/30 text-xs mb-3 font-light">We'll check whether reviewers mention these.</p>
+                    <div class="flex flex-wrap gap-2" id="concern-chips" data-target="concerns">
+                        <button type="button" class="chip" data-value="Bugs">Bugs</button>
+                        <button type="button" class="chip" data-value="Crashes">Crashes</button>
+                        <button type="button" class="chip" data-value="Performance problems">Performance</button>
+                        <button type="button" class="chip" data-value="Multiplayer population">Player population</button>
+                        <button type="button" class="chip" data-value="Balance issues">Balance</button>
+                        <button type="button" class="chip" data-value="Repetitive gameplay">Repetitive gameplay</button>
+                    </div>
+                    <input type="hidden" name="concerns" id="concerns">
                 </div>
 
                 <!-- Submit Button -->
                 <button type="submit" id="submit-btn" class="b-btn w-full py-4 text-sm font-medium flex items-center justify-center gap-3">
-                    <span>Initialize AI Diagnostic Check</span>
+                    <span>Analyze Recent Reviews</span>
                     <div id="loader" class="loader-ring hidden"></div>
                 </button>
+
+                <p class="font-mono text-[10px] uppercase tracking-[1.4px] text-white/30 text-center">
+                    Sources: Recent Steam reviews + official patch notes
+                </p>
             </form>
         </div>
 
         <!-- Footer -->
         <p class="font-mono text-[10px] uppercase tracking-[1.4px] text-white/30 mt-8">
-            Smart Buyer's Guide &copy; 2026 / Laravel + Model Context Protocol
+            Buy or Wait &copy; 2026 / Review analysis only — not a hardware benchmark
         </p>
     </div>
 
-    <!-- AJAX Submission Script -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Chip groups: toggle selection, write joined values into the hidden input
+            document.querySelectorAll('[data-target]').forEach(group => {
+                const hidden = document.getElementById(group.dataset.target);
+                group.addEventListener('click', (e) => {
+                    const chip = e.target.closest('.chip');
+                    if (!chip) return;
+                    chip.classList.toggle('active');
+                    hidden.value = [...group.querySelectorAll('.chip.active')]
+                        .map(c => c.dataset.value).join(', ');
+                });
+            });
+
             const form = document.getElementById('check-form');
             const submitBtn = document.getElementById('submit-btn');
             const btnText = submitBtn.querySelector('span');
@@ -216,7 +220,7 @@
                 e.preventDefault();
 
                 submitBtn.disabled = true;
-                btnText.textContent = 'Contacting MCP Client...';
+                btnText.textContent = 'Reading recent reviews...';
                 loader.classList.remove('hidden');
 
                 const formData = new FormData(form);
@@ -239,7 +243,7 @@
                     const data = await response.json();
 
                     if (data.status === 'success' && data.id) {
-                        btnText.textContent = 'Establishing Link...';
+                        btnText.textContent = 'Opening report...';
                         card.style.opacity = '0';
                         card.style.transform = 'translateY(-10px)';
 
@@ -247,13 +251,13 @@
                             window.location.href = `/results/${data.id}`;
                         }, 300);
                     } else {
-                        throw new Error(data.message || 'Failed to initialize diagnostic check.');
+                        throw new Error(data.message || 'Failed to start the review analysis.');
                     }
 
                 } catch (err) {
                     alert('Error: ' + err.message);
                     submitBtn.disabled = false;
-                    btnText.textContent = 'Initialize AI Diagnostic Check';
+                    btnText.textContent = 'Analyze Recent Reviews';
                     loader.classList.add('hidden');
                 }
             });

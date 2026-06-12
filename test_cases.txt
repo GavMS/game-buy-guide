@@ -1,53 +1,73 @@
 GAME BUY GUIDE — TEST CASES
 ============================
-Format: game_name | hardware | expected verdict
+Format: game_name | priorities (optional) | concerns (optional) | expected verdict
+
+Inputs match the current form:
+  Priorities: Overall quality, Performance & optimization, Value for money,
+              Story, Multiplayer, Endgame content, Content quantity
+  Concerns:   Bugs, Crashes, Performance problems, Multiplayer population,
+              Balance issues, Repetitive gameplay
 
 ------------------------------------------------------------
 EXPECTED: BUY
 ------------------------------------------------------------
-1.  Elden Ring                          | RTX 3070, Ryzen 7 5800X, 16GB RAM
-2.  Hades                               | GTX 1060, i5-8400, 8GB RAM
-3.  Red Dead Redemption 2               | RTX 2080, i7-9700K, 16GB RAM
-4.  Hollow Knight                       | GTX 750 Ti, i3-6100, 8GB RAM
-5.  Deep Rock Galactic                  | GTX 1650, Ryzen 5 3600, 16GB RAM
+1.  Elden Ring             | Overall quality          | -                       | BUY
+2.  Hades                  | Value for money          | Repetitive gameplay     | BUY
+3.  Red Dead Redemption 2  | Story                    | -                       | BUY
+4.  Hollow Knight          | Content quantity         | -                       | BUY
+5.  Deep Rock Galactic     | Multiplayer              | Multiplayer population  | BUY
+6.  Forza Horizon 6        | Performance & optimization | Bugs                  | BUY
+       (Steam: Very Positive, ~87% — checked 2026-06-12. New release;
+        tests that the agent uses the exact name and doesn't fall back
+        to Forza Horizon 5 from training data.)
+7.  Lies of P              | Story                    | Balance issues          | BUY
+       (Steam: Very Positive, ~93% — checked 2026-06-12. Tests the
+        "What you asked about" section on difficulty/balance chatter.)
+8.  Deltarune              | Story, Value for money   | -                       | BUY
+       (Steam: Overwhelmingly Positive, ~99% — checked 2026-06-12.
+        Strongest possible BUY signal; a WAIT here means the
+        calibration thresholds are broken.)
 
 ------------------------------------------------------------
 EXPECTED: WAIT (bad reviews / known issues)
 ------------------------------------------------------------
-6.  Redfall                             | RTX 3080, i9-10900K, 32GB RAM
-7.  Gollum                              | RTX 2060, Ryzen 5 3600, 16GB RAM
-8.  Skull and Bones                     | RTX 3060, i7-11700, 16GB RAM
-9.  The Last of Us Part I               | RTX 2070, Ryzen 7 3700X, 16GB RAM
-10. Forspoken                           | RTX 3070, i7-12700K, 16GB RAM
+9.  Redfall                | -                        | Bugs                    | WAIT
+10. Gollum                 | Overall quality          | -                       | WAIT
+11. Skull and Bones        | Value for money          | Repetitive gameplay     | WAIT
+12. Forspoken              | Story                    | -                       | WAIT
 
 ------------------------------------------------------------
-HARDWARE EDGE CASES (low-end / potato PC)
+NO PRIORITIES / NO CONCERNS (optional fields left empty)
 ------------------------------------------------------------
-11. Cyberpunk 2077                      | GTX 1050 Ti, i5-7400, 8GB RAM
-12. Hogwarts Legacy                     | GTX 1060, Ryzen 5 2600, 8GB RAM
-13. Star Wars Jedi: Survivor            | RX 580, i5-8600K, 16GB RAM
+13. Stardew Valley         | -                        | -                       | BUY
+14. Battlefield 2042       | -                        | -                       | mixed/borderline
+       (Verdict should hinge purely on the recent review ratio.)
 
 ------------------------------------------------------------
-HARDWARE EDGE CASES (high-end / overkill PC)
+TOPIC-FILTER CASES (focus_topics relevance selection)
 ------------------------------------------------------------
-14. Minecraft                           | RTX 4090, i9-13900K, 64GB RAM
-15. Among Us                            | RTX 3080, Ryzen 9 5900X, 32GB RAM
-
-------------------------------------------------------------
-TRICKY / BORDERLINE CASES
-------------------------------------------------------------
-16. No Man's Sky       | RTX 2060, Ryzen 5 3600, 16GB RAM   (launched bad, now good — should BUY)
-17. Cyberpunk 2077     | RTX 2060, Ryzen 5 3600, 16GB RAM   (launched bad, now good — should BUY)
-18. Battlefield 2042   | RTX 3070, i7-10700K, 16GB RAM      (mixed reviews)
-19. Destiny 2          | GTX 1070, i7-7700, 16GB RAM        (free to play, live service)
-20. Apex Legends       | GTX 1650, Ryzen 5 3500, 8GB RAM    (free to play)
+15. Cyberpunk 2077         | Performance & optimization | Bugs, Crashes         | BUY
+       (Launched broken, now patched — tests patch-history step AND
+        that [topic match] snippets surface performance reviews.)
+16. No Man's Sky           | Content quantity         | Repetitive gameplay     | BUY
+       (Same redemption-arc test as above.)
+17. Destiny 2              | Endgame content          | Multiplayer population  | borderline
+       (Live service — reviews swing with seasons; the "What you asked
+        about" section should address population honestly.)
+18. Apex Legends           | Multiplayer              | Balance issues          | borderline
+       (F2P; tests balance-complaint keyword matching.)
 
 ------------------------------------------------------------
 NOTES
 ------------------------------------------------------------
-- Run each case via POST /guide or python agent_backend/agent.py
-- Verdicts may vary depending on current Steam review trends
-- Cases 16 and 17 test whether the agent picks up patch history
-  (both games had terrible launches but are now well-patched)
-- Cases 14 and 15 test that hardware comments stay sensible
-  (no point warning about performance on overkill specs)
+- Run each case through the form, or directly:
+    POST /guide  {"game_name": "...", "priorities": "...", "concerns": "..."}
+  then poll GET /status/{job_id} for logs + verdict.
+- Verdicts depend on the ~50 most RECENT reviews, not all-time scores —
+  expected verdicts above may drift if a game's current state changes.
+  Steam scores noted were checked on 2026-06-12.
+- For cases with concerns set, confirm the log panel shows
+  "[Classify] N reviews mention the topics you asked about" and
+  [topic match] tags, and the answer has a "What you asked about" section.
+- Case 6 (Forza Horizon 6) is the regression test for the
+  wrong-game-substitution bug: the logs must show app 2483190, not FH5.

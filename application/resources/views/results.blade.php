@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DIAGNOSTICS://DASHBOARD — Smart Buyer's Guide</title>
+    <title>REVIEW_ANALYSIS — Buy or Wait</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -86,6 +86,10 @@
             to { opacity: 1; transform: translateY(0); }
         }
         [x-cloak] { display: none !important; }
+        .summary-md strong { color: #ffffff; font-weight: 500; }
+        .summary-md ul { list-style: none; padding-left: 0; }
+        .summary-md li { padding-left: 1.25rem; position: relative; }
+        .summary-md li::before { content: '>'; position: absolute; left: 0; color: rgba(255,255,255,0.3); font-family: 'Geist Mono', monospace; }
     </style>
 </head>
 <body class="font-sans flex flex-col items-center justify-center p-4 md:p-8 selection:bg-white selection:text-[#1f2228]">
@@ -97,33 +101,29 @@
                 <svg class="w-3.5 h-3.5 text-white/50" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                 </svg>
-                <span class="font-mono text-[10px] uppercase tracking-[1.4px] text-white/50">Diagnostics Pipeline</span>
+                <span class="font-mono text-[10px] uppercase tracking-[1.4px] text-white/50">Review Analysis</span>
             </div>
             <h1 class="font-mono font-light text-4xl md:text-5xl tracking-tight mb-3">
-                EVALUATING<span class="text-white/30">_</span>HARDWARE
+                READING<span class="text-white/30">_</span>THE<span class="text-white/30">_</span>REVIEWS
             </h1>
             <p class="font-mono text-xs text-white/30 uppercase tracking-[1.4px]">
                 Session: <span class="text-white/70">{{ $id }}</span>
             </p>
         </div>
 
-        <!-- Target System Specs Panel -->
-        <div class="b-panel mb-6 grid grid-cols-2 md:grid-cols-4">
-            <div class="p-4 border-b md:border-b-0 border-r border-[rgba(255,255,255,0.1)]">
-                <span class="b-label block mb-1.5">Target Game</span>
+        <!-- Request Summary Panel -->
+        <div class="b-panel mb-6 grid grid-cols-1 md:grid-cols-3">
+            <div class="p-4 border-b md:border-b-0 md:border-r border-[rgba(255,255,255,0.1)]">
+                <span class="b-label block mb-1.5">Game</span>
                 <span class="text-white/70 text-sm block truncate" title="{{ $specs['game'] }}">{{ $specs['game'] }}</span>
             </div>
             <div class="p-4 border-b md:border-b-0 md:border-r border-[rgba(255,255,255,0.1)]">
-                <span class="b-label block mb-1.5">CPU Spec</span>
-                <span class="text-white/70 text-sm block truncate" title="{{ $specs['cpu'] }}">{{ $specs['cpu'] }}</span>
-            </div>
-            <div class="p-4 border-r border-[rgba(255,255,255,0.1)]">
-                <span class="b-label block mb-1.5">GPU Spec</span>
-                <span class="text-white/70 text-sm block truncate" title="{{ $specs['gpu'] }}">{{ $specs['gpu'] }}</span>
+                <span class="b-label block mb-1.5">Your Priorities</span>
+                <span class="text-white/70 text-sm block truncate" title="{{ $specs['priorities'] ?? '' }}">{{ ($specs['priorities'] ?? '') !== '' ? $specs['priorities'] : '—' }}</span>
             </div>
             <div class="p-4">
-                <span class="b-label block mb-1.5">System RAM</span>
-                <span class="text-white/70 text-sm block">{{ $specs['ram'] }}</span>
+                <span class="b-label block mb-1.5">Your Concerns</span>
+                <span class="text-white/70 text-sm block truncate" title="{{ $specs['concerns'] ?? '' }}">{{ ($specs['concerns'] ?? '') !== '' ? $specs['concerns'] : '—' }}</span>
             </div>
         </div>
 
@@ -134,7 +134,7 @@
                 <div class="flex items-center gap-3 mb-5">
                     <span class="w-2 h-2 bg-white blink"></span>
                     <span class="font-mono text-xs uppercase tracking-[1.4px] text-white/70">
-                        Analyzing System Architecture &amp; Requirements...
+                        Reading recent Steam reviews &amp; patch notes...
                     </span>
                 </div>
                 <!-- Progress Bar -->
@@ -163,9 +163,9 @@
                     <!-- Summary details -->
                     <div class="flex-grow">
                         <h3 class="font-mono text-xs uppercase tracking-[1.4px] text-white/50 mb-3">
-                            Recommendation Summary
+                            What the reviews say
                         </h3>
-                        <p class="text-white/70 text-sm md:text-base font-light leading-relaxed" style="white-space: pre-line;" x-text="summary"></p>
+                        <div class="text-white/70 text-sm md:text-base font-light leading-relaxed space-y-2 summary-md" x-html="renderMarkdown(summary)"></div>
                     </div>
                 </div>
             </div>
@@ -208,7 +208,7 @@
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
                 </svg>
-                <span>New Diagnostics Scan</span>
+                <span>Check Another Game</span>
             </a>
         </div>
     </div>
@@ -271,6 +271,30 @@
                     } catch (err) {
                         console.warn('Network issue encountered during polling:', err.message);
                     }
+                },
+
+                renderMarkdown(text) {
+                    if (!text) return '';
+                    // Escape HTML first so review/LLM text can't inject markup
+                    const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    const lines = esc.split(/\r?\n/);
+                    let html = '', inList = false;
+                    for (let line of lines) {
+                        line = line.trim();
+                        // Inline: **bold**, *italic*, ### headings stripped to bold
+                        line = line.replace(/^#{1,6}\s+(.*)$/, '<strong>$1</strong>')
+                                   .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                                   .replace(/(^|\s)\*([^*]+)\*(?=\s|$|[.,;:])/g, '$1<em>$2</em>');
+                        if (/^[-*]\s+/.test(line)) {
+                            if (!inList) { html += '<ul>'; inList = true; }
+                            html += '<li>' + line.replace(/^[-*]\s+/, '') + '</li>';
+                        } else {
+                            if (inList) { html += '</ul>'; inList = false; }
+                            if (line) html += '<p>' + line + '</p>';
+                        }
+                    }
+                    if (inList) html += '</ul>';
+                    return html;
                 },
 
                 scrollTerminal() {

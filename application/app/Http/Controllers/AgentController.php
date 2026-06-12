@@ -25,20 +25,18 @@ class AgentController extends Controller
     public function initiateCheck(Request $request)
     {
         $request->validate([
-            'cpu'  => 'required|string|max:100',
-            'gpu'  => 'required|string|max:100',
-            'ram'  => 'required|string|max:20',
-            'game' => 'required|string|max:100',
+            'game'       => 'required|string|max:100',
+            'priorities' => 'nullable|string|max:300',
+            'concerns'   => 'nullable|string|max:300',
         ]);
 
         $trackingId = (string) Str::uuid();
 
         $specs = [
-            'id'   => $trackingId,
-            'cpu'  => $request->input('cpu'),
-            'gpu'  => $request->input('gpu'),
-            'ram'  => $request->input('ram'),
-            'game' => $request->input('game'),
+            'id'         => $trackingId,
+            'game'       => $request->input('game'),
+            'priorities' => $request->input('priorities', ''),
+            'concerns'   => $request->input('concerns', ''),
         ];
 
         // Store specifications in Cache (valid for 10 minutes) for status/mock checks
@@ -50,22 +48,21 @@ class AgentController extends Controller
         try {
             $backendUrl = config('services.backend_api.url');
             
-            // Format the body to match Person 2's GuideRequest Pydantic Model
+            // Format the body to match the backend's GuideRequest Pydantic model.
+            // We pass our tracking ID as job_id so /status/{id} polling lines up.
             $payload = [
-                'game_name' => $request->input('game'),
-                'hardware'  => "CPU: " . $request->input('cpu') . ", GPU: " . $request->input('gpu') . ", RAM: " . $request->input('ram'),
+                'game_name'  => $request->input('game'),
+                'priorities' => $request->input('priorities', '') ?? '',
+                'concerns'   => $request->input('concerns', '') ?? '',
+                'job_id'     => $trackingId,
             ];
 
-            // Hit Person 2's exact endpoint path: /guide.
-            // The agent runs synchronously (Steam fetch + sentiment model + several
-            // Mistral calls), so allow plenty of time before giving up.
-            $response = Http::timeout(180)->post($backendUrl . '/guide', $payload);
-            
-            if ($response->successful()) {
-                // Since the backend is synchronous, store the final verdict in cache 
-                // so your checkStatus method can instantly read it when called.
-                Cache::put("job_verdict_{$trackingId}", $response->json()['verdict'], 600);
+            // The backend now runs the agent in a background thread and returns
+            // immediately — the results page polls /check-status/{id} for live
+            // progress logs and the final verdict.
+            $response = Http::timeout(15)->post($backendUrl . '/guide', $payload);
 
+            if ($response->successful()) {
                 return response()->json([
                     'status' => 'success',
                     'id' => $trackingId,
@@ -94,10 +91,9 @@ class AgentController extends Controller
     {
         // Retrieve specs from Cache (fallback) or pass ID to view
         $specs = Cache::get("job_specs_{$id}", [
-            'cpu' => 'Unknown CPU',
-            'gpu' => 'Unknown GPU',
-            'ram' => 'Unknown RAM',
-            'game' => 'Unknown Game'
+            'game'       => 'Unknown Game',
+            'priorities' => '',
+            'concerns'   => '',
         ]);
 
         return view('results', [
@@ -125,39 +121,8 @@ class AgentController extends Controller
             // Unreachable external API, proceed to simulation mode
         }
 
-        // If the synchronous /guide call already produced a real verdict, use it.
-        // The presence of this cache key means initiateCheck() reached the backend
-        // successfully, so we surface the genuine AI answer instead of the simulator.
-        $verdictText = Cache::get("job_verdict_{$id}");
-        if ($verdictText) {
-            $upper   = strtoupper($verdictText);
-            $buyPos  = strpos($upper, 'BUY');
-            $waitPos = strpos($upper, 'WAIT');
-
-            // Pick whichever keyword appears first; default to WAIT if neither is
-            // found (safer to advise caution than to show a false BUY).
-            if ($buyPos !== false && ($waitPos === false || $buyPos < $waitPos)) {
-                $verdict = 'BUY';
-            } else {
-                $verdict = 'WAIT';
-            }
-
-            return response()->json([
-                'status'  => 'completed',
-                'verdict' => $verdict,
-                'summary' => $verdictText,
-                'logs'    => [
-                    "[System] Diagnostics job {$id} initialised.",
-                    "[Agent] AI backend contacted - analysing Steam reviews & patch notes...",
-                    "[Agent] Verdict received from Game Buy Guide agent.",
-                ],
-            ]);
-        }
-
-        // No real verdict in cache. Because /guide runs synchronously during
-        // initiateCheck(), a successful run always caches the verdict before this
-        // page polls — so reaching here means the job is unknown/expired or the
-        // backend was offline. Be honest rather than fabricating a result.
+        // Reaching here means the backend's /status endpoint was unreachable
+        // (server offline or restarted mid-job). Be honest rather than fabricating.
         if (!$specs) {
             return response()->json([
                 'status'  => 'error',
