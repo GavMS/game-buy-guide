@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import threading
 import uuid
@@ -44,16 +45,20 @@ class GuideRequest(BaseModel):
 def _parse_verdict(text: str) -> str:
     """Pull BUY/WAIT/AVOID out of the agent's answer.
 
-    The verdict is the first word on the first non-empty line per the prompt
-    contract; fall back to earliest-keyword scanning if that line is malformed.
-    AVOID/WAIT are checked before BUY so phrases like "don't buy" or "avoid
-    buying" can never be misread as a BUY."""
+    Primary contract: a "VERDICT: <word>" line at the END of the answer (the
+    last such line wins, so reasoning that mentions the words earlier can't
+    interfere). Fallbacks: a bare verdict word on its own line, then keyword
+    scanning with negated-BUY protection ("don't buy" must not parse as BUY)."""
+    verdict_line = re.compile(r"VERDICT\s*[:\-]?\s*\**\s*(BUY|WAIT|AVOID)", re.IGNORECASE)
+    matches = verdict_line.findall(text)
+    if matches:
+        return matches[-1].upper()
+
+    # Fallback 1: a line that is nothing but a verdict word
     for line in text.strip().splitlines():
         word = line.strip().upper().strip('*# .:!')
         if word in ("BUY", "WAIT", "AVOID"):
             return word
-        if word:
-            break  # first non-empty line wasn't a bare verdict — fall back
 
     upper = text.upper()
     positions = {v: upper.find(v) for v in ("AVOID", "WAIT", "BUY")}

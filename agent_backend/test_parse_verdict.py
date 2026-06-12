@@ -2,6 +2,10 @@
 from server import _parse_verdict
 
 tests = [
+    ("Current state: healthy.\nReasons:\n- good\nVERDICT: BUY", "BUY"),
+    ("Reviews mention BUY a lot but...\nVERDICT: WAIT", "WAIT"),
+    ("**VERDICT: AVOID**", "AVOID"),
+    ("Verdict - wait", "WAIT"),
     ("BUY\n\nCurrent state: ...", "BUY"),
     ("WAIT\nbad state", "WAIT"),
     ("AVOID\nabandoned", "AVOID"),

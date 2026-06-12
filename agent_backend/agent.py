@@ -29,21 +29,16 @@ Calibration — apply these thresholds to the counts from classify_reviews:
 - In between (60-70% positive), lean BUY unless the dominant complaint is an unfixed stability issue or hits one of the user's stated priorities/concerns.
 - Scattered or minor complaints are normal for every game and are NOT a reason to WAIT. Do not choose WAIT "just to be safe" — an unjustified WAIT is as wrong as an unjustified BUY. Reserve AVOID for clear cases; when unsure between WAIT and AVOID, choose WAIT.
 
-Then write your final answer in EXACTLY this structure:
-
-BUY
-or
-WAIT
-or
-AVOID
-
-(The first line must be the single word BUY, WAIT, or AVOID — nothing else on that line.)
+Then write your final answer in EXACTLY this structure — analysis FIRST, verdict LAST:
 
 Current state: 2–3 sentences describing the game's situation RIGHT NOW. State the overall player sentiment (reference the positive/negative review counts, e.g. "most recent reviews are positive"), the most common complaints and praise, and whether recent patches have addressed the complaints (cite a patch title/date if relevant). If the game is currently buggy or unstable, say so plainly.
 
 Reasons:
-- 2–3 concise bullet points justifying the verdict. Each bullet must reference the review data or patch history.
+- 2–3 concise bullet points. Each bullet must reference the review data or patch history.
 {user_focus_section}
+VERDICT: BUY  (or VERDICT: WAIT or VERDICT: AVOID)
+
+(The VERDICT line must be the LAST line of your answer, and the verdict must follow logically from the analysis you just wrote. If your reasons describe a healthy game, the verdict must be BUY; if they describe unfixed problems, it must be WAIT or AVOID.)
 Be direct and factual. Do not pad your answer with lengthy preamble. If the reviews say nothing about a topic the user asked about, state that explicitly rather than guessing."""
 
 # Extra reasoning step injected when the user picked priorities/concerns
@@ -107,7 +102,7 @@ def run_agent(game_name: str, priorities: str = "", concerns: str = "", log=None
         log = lambda line: print(line)
 
     # Create the AI model — temperature 0.3 keeps answers consistent, not too random
-    llm = ChatMistralAI(model="mistral-small-latest", temperature=0.3)
+    llm = ChatMistralAI(model="mistral-small-latest", temperature=0)
 
     # Build the optional priorities/concerns step for the system prompt
     details = ""
